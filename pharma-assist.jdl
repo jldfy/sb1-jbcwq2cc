@@ -1,0 +1,141 @@
+// Application configuration
+application {
+  config {
+    baseName pharmaAssist
+    applicationType monolith
+    packageName com.pharmaassist
+    authenticationType jwt
+    prodDatabaseType postgresql
+    clientFramework react
+    enableTranslation true
+    nativeLanguage fr
+    languages [fr, en]
+  }
+}
+
+// ===================================================================
+// Enums
+// ===================================================================
+enum RenewalStatus {
+  UPCOMING,
+  TO_PREPARE,
+  IN_PROGRESS,
+  PREPARED,
+  COLLECTED
+}
+
+enum NotificationType {
+  SMS,
+  EMAIL,
+  SYSTEM
+}
+
+// ===================================================================
+// Core domain entities
+// ===================================================================
+entity Patient {
+  firstName String required
+  lastName String required
+  birthDate LocalDate required
+  phoneNumber String required pattern(/^[0-9]{10}$/)
+}
+
+// ===================================================================
+// Prescription management
+// ===================================================================
+entity Prescription {
+  uniqueNumber String required unique
+  prescriptionId String required unique
+  lgpiNumber String
+  startDate LocalDate required
+  duration Integer required min(1)
+  totalRenewals Integer required min(1)
+  createdAt Instant required
+}
+
+entity Renewal {
+  renewalNumber Integer required min(1)
+  dueDate LocalDate required
+  status RenewalStatus required
+  createdAt Instant required
+}
+
+entity Note {
+  content String required
+  createdAt Instant required
+}
+
+// ===================================================================
+// Calendar and scheduling
+// ===================================================================
+entity CalendarEvent {
+  title String required
+  startTime Instant required
+  endTime Instant required
+  allDay Boolean
+  type String
+  description String
+}
+
+// ===================================================================
+// Notification system
+// ===================================================================
+entity Notification {
+  type NotificationType required
+  message String required
+  read Boolean required
+  createdAt Instant required
+  scheduledFor Instant
+  sentAt Instant
+}
+
+entity SMSTemplate {
+  name String required
+  content String required
+  isDefault Boolean
+}
+
+// ===================================================================
+// Relationships
+// ===================================================================
+relationship ManyToOne {
+  Prescription{patient required} to Patient
+  Prescription{assignedTo required} to User
+  Renewal{prescription required} to Prescription
+  Renewal{assignedTo required} to User
+  Note{prescription} to Prescription
+  Note{renewal} to Renewal
+  Note{createdBy required} to User
+  Notification{user required} to User
+  CalendarEvent{renewal} to Renewal
+  CalendarEvent{createdBy required} to User
+}
+
+// ===================================================================
+// Service layer configuration
+// ===================================================================
+service all with serviceImpl
+dto * with mapstruct
+paginate * with pagination
+filter *
+
+// ===================================================================
+// Search configuration
+// ===================================================================
+search Patient, Prescription, Renewal with elasticsearch
+
+// ===================================================================
+// Deployment configuration
+// ===================================================================
+deployment {
+  deploymentType docker-compose
+  serviceDiscoveryType eureka
+  monitoring prometheus
+  logging elk
+}
+
+// ===================================================================
+// Client configuration
+// ===================================================================
+clientPackageManager npm
+enableSwaggerCodegen true
